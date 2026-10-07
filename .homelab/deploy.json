@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "note": "An npm package, no LXC. The step publishes this package when its version on main has no tag yet, then opens consumer bump tasks. See AGENTS.md \"Close-out\".",
+  "steps": [
+    { "type": "npm", "package": "server-kit", "root": true }
+  ]
+}
