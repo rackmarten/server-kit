@@ -1,0 +1,4 @@
+# Leak-check exceptions: <path-glob>:<id>. Only for functional configuration
+# (package settings, scaffolding), never for prose; see AGENTS.md
+# "Public repository, private homelab". Empty for now: rephrase a hit rather
+# than listing it here.

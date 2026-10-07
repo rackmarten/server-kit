@@ -1,0 +1,92 @@
+name: Publish
+
+# Tag-triggered rather than on every push to main, so a release is a
+# distinct, intentional action instead of every merge silently minting a
+# published version some other app might start depending on.
+#
+# Tags are plain `v<version>` (`v0.10.0`) and must match package.json, so
+# `git tag` answers "is this version published?" without reading it.
+on:
+  push:
+    tags:
+      - "v*"
+
+# id-token: write lets npm sign a provenance statement for the release.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag matches package.json
+        # A mismatch means whoever cut the release forgot the version bump,
+        # and publishing anyway would put a version on the registry that no
+        # tag names.
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          want="${TAG#v}"
+          have=$(node -p "require('./package.json').version")
+          if [ "${have}" != "${want}" ]; then
+            echo "::error::Tag ${TAG} wants ${want} but package.json is ${have} - bump it and retag"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+          scope: "@rackmarten"
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} already published, skipping"
+          else
+            npm publish --access public --provenance
+          fi
+
+  release:
+    # A job of its own because creating a release needs contents: write,
+    # which the publish job (holding NPM_TOKEN) has no reason to get.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create the GitHub release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # The body of the "## [<version>] - <date>" section, up to the next
+          # "## [" heading or the link references at the bottom.
+          awk -v v="${version}" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            on { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section for ${version}"
+            exit 1
+          fi
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists, skipping"
+          else
+            gh release create "${TAG}" --title "${TAG}" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          fi

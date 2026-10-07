@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-test/
+*.log
+.env
+.env.*
+!.env.example
+
+# Agent tooling may create a git worktree at .claude/worktrees/<name> inside
+# whichever repo it is working on, so a
+# plain `git add -A` would otherwise commit a gitlink to a throwaway worktree.
+# The worktree is swept a day later, so what stays behind is a repo pointing at
+# something that no longer exists.
+.claude/worktrees/
