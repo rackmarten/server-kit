@@ -1,5 +1,7 @@
 # @rackmarten/server-kit
 
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/rackmarten)
+
 Fastify 5 + TypeScript building blocks for the backend of a small
 self-hosted web app that ships its own PWA: auth, an inference gateway
 client, a Postgres connection, OpenAPI, notifications, an SPA fallback and
@@ -189,6 +191,16 @@ Tests live in `test/`, mirroring `src/` (`src/auth/jwt.ts` ->
 They run on `node:test` with `node:assert`, compiled to `dist-test/`, so
 `dist/` never contains them. Tests that need Postgres are skipped unless
 `TEST_DATABASE_URL` is set.
+
+## Support this project
+
+If server-kit saves you time, you can support its development on
+[Ko-fi](https://ko-fi.com/rackmarten):
+
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/rackmarten)
+
+Bug reports, ideas and pull requests
+are just as welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 See `CONTRIBUTING.md` for how to contribute and `CHANGELOG.md` for what
 changed in each release. Licensed under the [MIT License](LICENSE).
