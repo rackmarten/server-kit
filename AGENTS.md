@@ -41,8 +41,8 @@ with semver headings. To release: bump `version` in `package.json`, rename
 `[Unreleased]` to `[<version>] - <YYYY-MM-DD>` (add a fresh empty
 `[Unreleased]` above it and update the link references at the bottom), merge,
 then push the tag `v<version>`. `.github/workflows/publish.yml` refuses a tag
-that doesn't match `package.json`, publishes to npm with provenance using the
-repository's `NPM_TOKEN` secret, and creates a GitHub release whose notes are
+that doesn't match `package.json`, publishes to npm with provenance through npm trusted publishing
+(OIDC from this workflow, no token secret), and creates a GitHub release whose notes are
 that version's `CHANGELOG.md` section.
 
 ## Public repository, private homelab

@@ -11,7 +11,9 @@ on:
     tags:
       - "v*"
 
-# id-token: write lets npm sign a provenance statement for the release.
+# id-token: write is how this job authenticates to npm: the package trusts
+# this repository's publish.yml (npm trusted publishing, OIDC), so there is no
+# npm token secret. npm also signs a provenance statement with it.
 permissions:
   contents: read
   id-token: write
@@ -47,8 +49,6 @@ jobs:
       - run: npm test
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           name=$(node -p "require('./package.json').name")
           version=$(node -p "require('./package.json').version")
@@ -60,7 +60,7 @@ jobs:
 
   release:
     # A job of its own because creating a release needs contents: write,
-    # which the publish job (holding NPM_TOKEN) has no reason to get.
+    # which the publish job (able to publish to npm) has no reason to get.
     needs: publish
     runs-on: ubuntu-latest
     permissions:
