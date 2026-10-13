@@ -8,6 +8,22 @@ While the version is 0.x, a minor bump may contain breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Swagger UI for the OpenAPI document at `/api/docs` (`@fastify/swagger-ui`),
+  on by default. `openapi.ui: false` turns it off, `openapi.uiRoute` moves it.
+  Its assets are served from the same origin under a CSP scoped to its own
+  routes; the app-wide helmet policy is unchanged.
+- `defineDto(app, name, schema)`: registers a named, reusable DTO schema,
+  listed once under `components.schemas` by its name, and returns a typed
+  reference for routes.
+- Under the `jwt` strategy the OpenAPI document declares the token in
+  `components.securitySchemes`, required on every route except public ones.
+
+### Changed
+
+- The OpenAPI document's default `info.title` is `"API"`.
+
 ## [0.10.0] - 2026-10-06
 
 The first public release.

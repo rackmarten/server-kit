@@ -77,24 +77,46 @@ What it exports:
 - **`homelabFetch(request, url, init)`, `forwardTokenHeaders`**: forward the
   caller's token to another app, so it sees the same person. Tokens live 5
   minutes, so forward while serving the request, not from a later job.
-- **OpenAPI and typed routes** (`registerOpenApi`, re-exported TypeBox
-  `Type`/`Static`/`TypeBoxTypeProvider`): every app serves its OpenAPI 3.1
-  document at `/api/openapi.json`. Name it with `openapi: { title, version }`
-  or turn it off with `openapi: false`. A route with a TypeBox schema gets a
-  typed handler, validated input and a typed entry in the document:
+- **OpenAPI and typed routes** (`registerOpenApi`, `defineDto`, re-exported
+  TypeBox `Type`/`Static`/`TypeBoxTypeProvider`): every app serves its
+  OpenAPI 3.1 document at `/api/openapi.json` and a Swagger UI for it at
+  `/api/docs`. Options under `openapi`: `title`, `version`, `description`
+  (the title defaults to `"API"`), `route` (the document), `ui: false` (no
+  UI) and `uiRoute` (move it). `openapi: false` turns off both. The UI
+  loads its assets from the same origin and sends its own
+  Content-Security-Policy on its routes only; the app-wide helmet policy is
+  unchanged. Under the `jwt` strategy the document lists the token in
+  `components.securitySchemes` (Bearer or `X-Homelab-Token`), required on
+  every route except `config: { public: true }` ones, and the document and
+  UI need a token like any other route.
+
+  A route with a TypeBox schema gets a typed handler, validated input and a
+  typed entry in the document. `defineDto(app, name, schema)` registers a
+  named, reusable DTO (listed once under `components.schemas` as `name`
+  instead of inlined in every route) and returns a typed reference to it.
+  Define it before the routes that use it, on the same instance or a parent:
 
   ```ts
-  import { Type, type TypeBoxTypeProvider } from "@rackmarten/server-kit";
+  import { defineDto, Type, type TypeBoxTypeProvider } from "@rackmarten/server-kit";
 
   registerServices: async (app) => {
+    const Thing = defineDto(app, "Thing", Type.Object({ id: Type.Integer(), name: Type.String() }));
     const r = app.withTypeProvider<TypeBoxTypeProvider>();
     r.get(
       "/api/things/:id",
-      { schema: { params: Type.Object({ id: Type.Integer() }) } },
+      { schema: { params: Type.Object({ id: Type.Integer() }), response: { 200: Thing } } },
       async (request) => getThing(request.params.id), // id: number
     );
+    r.get("/api/things", { schema: { response: { 200: Type.Array(Thing) } } }, listThings);
   },
   ```
+
+  Without the helper it is `app.addSchema(Type.Object({...}, { $id: "Thing" }))`
+  and `Type.Ref("Thing")` in the route, which loses the handler's types.
+
+  **A response schema also drives serialization:** properties not in the
+  schema are dropped from the response, silently. Add a `response` schema
+  only with the full DTO, not a partial one that documents a few fields.
 
 - **Ownership** (`ownershipColumns`, `visibleTo`, `canSee`, `canUse`,
   `isOwner`, `isAdmin`, `principal`, plus `SQLITE_OWNERSHIP_COLUMNS`,
