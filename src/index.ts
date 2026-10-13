@@ -1,7 +1,7 @@
 export { createApp, DEFAULT_TRUSTED_PROXIES } from "./core.js";
 export type { CoreOptions } from "./core.js";
 
-export { registerOpenApi } from "./openapi.js";
+export { defineDto, registerOpenApi } from "./openapi.js";
 export type { OpenApiOptions } from "./openapi.js";
 // TypeBox, so a route's schema types its handler without the app adding
 // its own dependencies: app.withTypeProvider<TypeBoxTypeProvider>().

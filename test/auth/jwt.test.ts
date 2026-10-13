@@ -182,3 +182,25 @@ test("jwt strategy refuses to start without keys", async () => {
     if (saved !== undefined) process.env.HOMELAB_TOKEN_KEYS = saved;
   }
 });
+
+test("jwt strategy: the OpenAPI document requires the token except on public routes", async () => {
+  const app = await buildApp();
+  const response = await app.inject({
+    url: "/api/openapi.json",
+    headers: { "x-homelab-token": mint(current) },
+  });
+  const doc = response.json<{
+    components: { securitySchemes: Record<string, { type: string }> };
+    security: Record<string, string[]>[];
+    paths: Record<string, Record<string, { security?: unknown }>>;
+  }>();
+  assert.deepEqual(Object.keys(doc.components.securitySchemes), ["bearerAuth", "tokenHeader"]);
+  assert.deepEqual(doc.security, [{ bearerAuth: [] }, { tokenHeader: [] }]);
+  assert.equal(doc.paths["/api/things"].get.security, undefined);
+  assert.deepEqual(doc.paths["/api/callback"].post.security, []);
+  assert.deepEqual(doc.paths["/health"].get.security, []);
+  // The UI sits behind the token like every other route.
+  const docs = await app.inject({ url: "/api/docs" });
+  assert.equal(docs.statusCode, 401);
+  await app.close();
+});

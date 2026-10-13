@@ -47,9 +47,9 @@ export interface CoreOptions {
   // Runs as part of the /health route so a caller can fold in its own
   // check (e.g. a DB ping) instead of registering a competing route.
   healthCheck?: () => Promise<void> | void;
-  // The OpenAPI document at /api/openapi.json (see openapi.ts). On unless
-  // `false`; pass options to name the app in it. Under the jwt strategy the
-  // document needs a token like any other route.
+  // The OpenAPI document at /api/openapi.json and its Swagger UI at
+  // /api/docs (see openapi.ts). On unless `false`; pass options to name the
+  // app in it. Under the jwt strategy both need a token like any other route.
   openapi?: false | OpenApiOptions;
   // Serve the built PWA with the homelab URL convention (pages at /<route>,
   // JSON under /api) - see spa.ts. Same as calling registerSpa yourself,
@@ -88,7 +88,9 @@ export const createApp = async (options: CoreOptions): Promise<FastifyInstance> 
   }
 
   // Before any route, so it sees them all.
-  if (options.openapi !== false) await registerOpenApi(app, options.openapi ?? {});
+  if (options.openapi !== false) {
+    await registerOpenApi(app, { jwt: options.auth.strategy === "jwt", ...options.openapi });
+  }
 
   const auth = createAuthStrategy(options.auth);
   app.decorate("auth", auth);
