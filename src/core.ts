@@ -5,6 +5,7 @@ import { createAuthStrategy } from "./auth/index.js";
 import { registerJwtAuth, type JwtStrategy } from "./auth/jwt.js";
 import type { AuthConfig, AuthStrategy } from "./auth/types.js";
 import { EightBallClient, type EightBallClientOptions } from "./eightball/client.js";
+import { registerCompression } from "./compression.js";
 import { registerHealth } from "./health.js";
 import { registerOpenApi, type OpenApiOptions } from "./openapi.js";
 import { legacyApiRewrite, registerSpa, type CreateAppSpaOptions } from "./spa.js";
@@ -51,6 +52,11 @@ export interface CoreOptions {
   // /api/docs (see openapi.ts). On unless `false`; pass options to name the
   // app in it. Under the jwt strategy both need a token like any other route.
   openapi?: false | OpenApiOptions;
+  // br/gzip responses, weak ETags with an empty 304 for an unchanged GET/HEAD
+  // 200, and `cache-control: no-cache` on JSON that set none (see
+  // compression.ts). On unless `false`. Covers every route createApp
+  // registers and every route registered after it.
+  compression?: boolean;
   // Serve the built PWA with the homelab URL convention (pages at /<route>,
   // JSON under /api) - see spa.ts. Same as calling registerSpa yourself,
   // except that only this route can turn on `legacyApiAliases`.
@@ -86,6 +92,9 @@ export const createApp = async (options: CoreOptions): Promise<FastifyInstance> 
       ? app.register(helmet, options.helmet)
       : app.register(helmet));
   }
+
+  // Before any route: @fastify/compress only applies to routes added after it.
+  if (options.compression ?? true) await registerCompression(app);
 
   // Before any route, so it sees them all.
   if (options.openapi !== false) {
