@@ -8,8 +8,21 @@ While the version is 0.x, a minor bump may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-20
+
 ### Added
 
+- `createApp` compresses responses (br, gzip) and gives every serialized
+  body a weak ETag, answering an unchanged `GET`/`HEAD` `200` with an empty
+  `304`. Errors and writes never become a `304`, a `HEAD` `304` no longer
+  crashes, and SSE written to `reply.raw` is untouched. JSON with no
+  `cache-control` of its own gets `no-cache`. On by default for every route
+  createApp registers (the SPA included) and every route registered after
+  it; `compression: false` turns it off. An app that registered
+  `@fastify/compress` or `@fastify/etag` itself should drop that.
+- The SPA serves hashed build output under `assets/` with
+  `cache-control: public, max-age=31536000, immutable`. `index.html` and
+  other files are still revalidated on every load.
 - Swagger UI for the OpenAPI document at `/api/docs` (`@fastify/swagger-ui`),
   on by default. `openapi.ui: false` turns it off, `openapi.uiRoute` moves it.
   Its assets are served from the same origin under a CSP scoped to its own
@@ -65,5 +78,6 @@ The first public release.
   `lint:fix` and `format` scripts; the source was reformatted by Prettier
   and `eslint --fix`, with no change in behavior.
 
-[Unreleased]: https://github.com/rackmarten/server-kit/commits/main
+[Unreleased]: https://github.com/rackmarten/server-kit/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/rackmarten/server-kit/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rackmarten/server-kit/releases/tag/v0.10.0

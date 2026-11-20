@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import type { IncomingMessage } from "node:http";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
@@ -24,6 +24,13 @@ export interface CreateAppSpaOptions extends SpaOptions {
 
 const DEFAULT_API_PREFIX = "/api";
 
+// Vite's build output puts every hashed (content-addressed) file under
+// assets/, so a given URL never changes content and the browser can keep it
+// for a year without asking. Everything else, index.html included, keeps
+// @fastify/static's `max-age=0` + ETag and is revalidated on every load.
+const ASSETS_DIR = "assets";
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
 const pathOf = (url: string): string => {
   const queryStart = url.indexOf("?");
   return queryStart === -1 ? url : url.slice(0, queryStart);
@@ -43,6 +50,17 @@ export const registerSpa = async (app: FastifyInstance, options: SpaOptions): Pr
   const apiPrefix = options.apiPrefix ?? DEFAULT_API_PREFIX;
 
   await app.register(fastifyStatic, { root: options.root });
+  const assets = path.join(options.root, ASSETS_DIR);
+  if (existsSync(assets)) {
+    // The more specific /assets/* route wins over the root's /*.
+    await app.register(fastifyStatic, {
+      root: assets,
+      prefix: `/${ASSETS_DIR}/`,
+      decorateReply: false,
+      maxAge: ONE_YEAR_MS,
+      immutable: true,
+    });
+  }
 
   app.setNotFoundHandler((request, reply) => {
     const urlPath = pathOf(request.url);
