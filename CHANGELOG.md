@@ -8,6 +8,8 @@ While the version is 0.x, a minor bump may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-23
+
 ### Added
 
 - Swagger UI for the OpenAPI document at `/api/docs` (`@fastify/swagger-ui`),
@@ -75,5 +77,6 @@ The first public release.
   `lint:fix` and `format` scripts; the source was reformatted by Prettier
   and `eslint --fix`, with no change in behavior.
 
-[Unreleased]: https://github.com/rackmarten/server-kit/commits/main
+[Unreleased]: https://github.com/rackmarten/server-kit/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/rackmarten/server-kit/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rackmarten/server-kit/releases/tag/v0.10.0
