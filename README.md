@@ -52,7 +52,7 @@ What it exports:
 
 - **`createApp`, `DEFAULT_TRUSTED_PROXIES`**: the app factory. Options:
   `auth`, `eightball`, `cors`, `helmet`, `logger`, `trustProxy`, `bodyLimit`,
-  `healthCheck`, `openapi`, `spa`, `registerServices`.
+  `healthCheck`, `openapi`, `spa`, `usage`, `registerServices`.
 - **Auth** (`createAuthStrategy`, `createJwtStrategy`, `registerJwtAuth`,
   `verifyToken`, `parsePublicKeys`, `tokenFromHeaders`):
   - `tailnet-trust` re-checks that the request's source IP is on the tailnet
@@ -177,6 +177,71 @@ prompt })` returns `{ content, model }`. Always pin `model` when outputs
   requests to old root paths onto `/api/...` while clients migrate.
 - **Body size**: Fastify's default 1MiB body limit applies unless you pass
   `bodyLimit` (bytes), e.g. for a route that receives base64 images.
+
+## Usage tracking
+
+Opt-in, off unless `usage` is passed. It records which API routes are
+called and by whom, relays the browser tracker's events, and sends both to a
+central usage ingest. Delivery is fire-and-forget: an ingest outage loses
+events, never fails a request.
+
+```ts
+const app = await createApp({
+  auth: { strategy: "jwt" },
+  usage: {
+    app: "demo",
+    endpoint: process.env.USAGE_INGEST_URL ?? "", // empty records nothing
+    inventory: [
+      { kind: "view", key: "/tasks" },
+      { kind: "feature", key: "new-task" },
+    ],
+  },
+  registerServices,
+});
+```
+
+- **Request events.** Every response becomes one `request` event with the
+  matched route pattern (`/api/tasks/:id`, never the URL), method, status,
+  duration, actor and surface. `/health`, the OpenAPI document and docs UI,
+  the relay route, unmatched routes, `HEAD` and `OPTIONS` are skipped. With
+  `spa`, only routes under its API prefix count (pages come from the
+  browser as `view` events).
+- **Actor**, first match wins: the `jwt` strategy's `request.user` ->
+  `human:<id>`; `x-homelab-actor: <type>:<name>` (type `human`, `agent`,
+  `foreman` or `system`); the app's `resolveActor(request)`, returning
+  `{ actorType, actorName, surface? }` or `null` to fall through;
+  `x-homelab-client: pwa` -> `human:operator`; else `system:api`. The
+  headers are self-asserted: they label usage, they don't authenticate.
+- **Surface**: `pwa` when `x-homelab-client: pwa` is sent (or the resolver
+  says so), `cli` when a valid `x-homelab-actor` is, else the resolver's
+  surface or `api`.
+- **Relay**: `POST /api/usage/events` takes the browser tracker's batch,
+  `{ events: ClientUsageEvent[] }` (at most 1000), each with `ts`, `kind`
+  (`view`, `active` or `click`), `route` and optional `module`, `feature`
+  and `value`. It stamps the app and the actor the server resolved,
+  ignoring any actor the client sends, keeps only those fields and strips a
+  query string from `route`. `?client=pwa` stands in for the header, since
+  `sendBeacon` cannot set one, and any content type is accepted. Always
+  `204`, even for a body it can't read. Under `jwt` it needs a token like
+  any route.
+- **Inventory**: when the app is ready, its API routes (`api`,
+  `<METHOD> <pattern>`) plus the `view`/`feature` items in `inventory` are
+  posted to `<endpoint>/v1/inventory`, replacing the app's previous one.
+  It is what "never used" is measured against.
+- **Delivery**: events wait in a buffer of `maxBuffer` (default 5000,
+  oldest dropped first) and go to `<endpoint>/v1/events` every
+  `flushIntervalMs` (default 15s), as soon as 500 are waiting, and on
+  `app.close()`. A failed batch is dropped and logged at debug level, at
+  most once a minute.
+
+The ingest contract (`UsageEvent`, `UsageEventBatch`, `UsageInventory`,
+`ClientUsageEvent`, ...) is exported as types, so the browser tracker and
+the ingest build against the same shapes.
+
+**Privacy.** Events carry route patterns, module and feature names, and
+who made the call (the person's id under `jwt`, or a named actor). Never
+ids from the app's own data, free text, request bodies or query strings. Keep the browser's `route`, `module` and `feature` to the same
+rule: a pattern or a fixed name, not a value the person typed.
 
 ## Helmet and Content-Security-Policy
 
