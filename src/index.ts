@@ -13,6 +13,28 @@ export {
   type FastifyPluginAsyncTypebox,
 } from "@fastify/type-provider-typebox";
 
+export {
+  DEFAULT_USAGE_FLUSH_INTERVAL_MS,
+  DEFAULT_USAGE_MAX_BUFFER,
+  USAGE_MAX_BATCH,
+  USAGE_RELAY_ROUTE,
+} from "./usage/index.js";
+export type {
+  ClientUsageBatch,
+  ClientUsageEvent,
+  UsageActor,
+  UsageActorResolver,
+  UsageActorType,
+  UsageEvent,
+  UsageEventBatch,
+  UsageEventKind,
+  UsageInventory,
+  UsageInventoryItem,
+  UsageInventoryKind,
+  UsageOptions,
+  UsageSurface,
+} from "./usage/index.js";
+
 export { registerSpa } from "./spa.js";
 export type { SpaOptions, CreateAppSpaOptions } from "./spa.js";
 

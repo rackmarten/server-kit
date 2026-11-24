@@ -8,6 +8,8 @@ While the version is 0.x, a minor bump may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-23
+
 ### Added
 
 - Swagger UI for the OpenAPI document at `/api/docs` (`@fastify/swagger-ui`),
@@ -19,6 +21,16 @@ While the version is 0.x, a minor bump may contain breaking changes.
   reference for routes.
 - Under the `jwt` strategy the OpenAPI document declares the token in
   `components.securitySchemes`, required on every route except public ones.
+- Opt-in usage tracking through `createApp`'s new `usage` option (`app`,
+  `endpoint`, `resolveActor`, `inventory`, `flushIntervalMs`, `maxBuffer`),
+  off when omitted: one
+  `request` event per API call (route pattern, method, status, duration,
+  actor, surface), a `POST /api/usage/events` relay for the browser
+  tracker's events that stamps the server-resolved actor, and the route
+  inventory posted on ready. Sent to a usage ingest through a bounded
+  buffer; an unreachable ingest drops events and never fails a request.
+  The ingest contract types (`UsageEvent`, `UsageInventory`,
+  `ClientUsageEvent`, ...) are exported.
 
 ### Changed
 
@@ -65,5 +77,6 @@ The first public release.
   `lint:fix` and `format` scripts; the source was reformatted by Prettier
   and `eslint --fix`, with no change in behavior.
 
-[Unreleased]: https://github.com/rackmarten/server-kit/commits/main
+[Unreleased]: https://github.com/rackmarten/server-kit/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/rackmarten/server-kit/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rackmarten/server-kit/releases/tag/v0.10.0
