@@ -93,7 +93,7 @@ test("disabled by default: no relay route, nothing sent", async () => {
 test("a request event carries the route pattern, never the URL", async () => {
   const ingest = fakeIngest();
   const app = await buildApp({ fetch: ingest.fetch });
-  await app.inject({ method: "GET", url: "/api/things/42?secret=hunter2" });
+  await app.inject({ method: "GET", url: "/api/things/xyzzy?secret=hunter2" });
   await app.inject({ method: "POST", url: "/api/things", payload: { name: "x" } });
   await app.close();
 
@@ -110,7 +110,8 @@ test("a request event carries the route pattern, never the URL", async () => {
   assert.equal(post.route, "/api/things");
   assert.equal(post.method, "POST");
   assert.ok(!JSON.stringify(ingest.sent).includes("hunter2"));
-  assert.ok(!JSON.stringify(ingest.sent).includes("42"));
+  // A non-numeric id, so a timestamp or duration can't match it by chance.
+  assert.ok(!JSON.stringify(ingest.sent).includes("xyzzy"));
   assert.ok(ingest.sent.every((entry) => (entry.body as { app: string }).app === "demo"));
 });
 
