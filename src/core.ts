@@ -9,6 +9,7 @@ import { registerCompression } from "./compression.js";
 import { registerHealth } from "./health.js";
 import { registerOpenApi, type OpenApiOptions } from "./openapi.js";
 import { legacyApiRewrite, registerSpa, type CreateAppSpaOptions } from "./spa.js";
+import { registerUsage, type UsageOptions, type UsageScope } from "./usage/index.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -61,6 +62,10 @@ export interface CoreOptions {
   // JSON under /api) - see spa.ts. Same as calling registerSpa yourself,
   // except that only this route can turn on `legacyApiAliases`.
   spa?: CreateAppSpaOptions;
+  // Opt-in usage tracking (see usage/index.ts): one event per API request,
+  // a relay route for the browser tracker's batches and the route
+  // inventory, all sent to a usage ingest. Omitted, nothing is recorded.
+  usage?: UsageOptions;
   // Service-specific routes/hooks/plugins - the equivalent of the old
   // Feathers `app.options` registration step. Each service's own app.ts
   // supplies these; core.ts only wires up the cross-cutting concerns
@@ -73,6 +78,16 @@ export interface CoreOptions {
 // to createApp for any other setup.
 // eslint-disable-next-line sonarjs/no-hardcoded-ip -- functional default: the reverse proxy's LAN address
 export const DEFAULT_TRUSTED_PROXIES = ["loopback", "192.168.0.103"];
+
+// createApp's own routes stay out of the usage data, and with an SPA only
+// the API prefix counts (the browser reports pages as views).
+const usageScope = (options: CoreOptions): UsageScope => {
+  const openapi = options.openapi === false ? undefined : (options.openapi ?? {});
+  const ignore = ["/health"];
+  if (openapi) ignore.push(openapi.route ?? "/api/openapi.json");
+  if (openapi && openapi.ui !== false) ignore.push(openapi.uiRoute ?? "/api/docs");
+  return { ignore, apiPrefix: options.spa ? (options.spa.apiPrefix ?? "/api") : undefined };
+};
 
 export const createApp = async (options: CoreOptions): Promise<FastifyInstance> => {
   const app = Fastify({
@@ -103,6 +118,11 @@ export const createApp = async (options: CoreOptions): Promise<FastifyInstance> 
 
   const auth = createAuthStrategy(options.auth);
   app.decorate("auth", auth);
+
+  // Before any route but the OpenAPI ones it skips anyway (jwt's /api/me
+  // included), so its onRoute hook sees them all.
+  if (options.usage) await registerUsage(app, options.usage, usageScope(options));
+
   // tailnet-trust stays advisory (apps call app.auth themselves); jwt is
   // enforced on every route not marked public, see auth/jwt.ts.
   if (options.auth.strategy === "jwt")
