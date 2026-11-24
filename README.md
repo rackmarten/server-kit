@@ -24,8 +24,9 @@ No `.npmrc` or token is needed; it is public on the npm registry.
 ## Usage
 
 Fastify 5 + TypeScript. `createApp(options)` wires up the cross-cutting
-concerns (cors, helmet, an auth strategy, an optional inference gateway
-client, a `/health` route, the OpenAPI document, the SPA fallback) and then
+concerns (cors, helmet, response compression and ETags, an auth strategy,
+an optional inference gateway client, a `/health` route, the OpenAPI
+document, the SPA fallback) and then
 registers the app's own routes via `options.registerServices`.
 
 ```ts
@@ -52,7 +53,7 @@ What it exports:
 
 - **`createApp`, `DEFAULT_TRUSTED_PROXIES`**: the app factory. Options:
   `auth`, `eightball`, `cors`, `helmet`, `logger`, `trustProxy`, `bodyLimit`,
-  `healthCheck`, `openapi`, `spa`, `usage`, `registerServices`.
+  `healthCheck`, `openapi`, `compression`, `spa`, `usage`, `registerServices`.
 - **Auth** (`createAuthStrategy`, `createJwtStrategy`, `registerJwtAuth`,
   `verifyToken`, `parsePublicKeys`, `tokenFromHeaders`):
   - `tailnet-trust` re-checks that the request's source IP is on the tailnet
@@ -175,6 +176,18 @@ prompt })` returns `{ content, model }`. Always pin `model` when outputs
   `index.html`, and `/api/...`, other methods and missing files with an
   extension get a JSON 404. `legacyApiAliases: true` rewrites non-page
   requests to old root paths onto `/api/...` while clients migrate.
+  Files under `assets/` (Vite's hashed build output) are sent with
+  `cache-control: public, max-age=31536000, immutable`; everything else,
+  `index.html` included, keeps `max-age=0` with an ETag and is revalidated.
+- **Compression and ETags** (`compression` on `createApp`, on unless
+  `false`): br/gzip responses for clients that accept them, a weak ETag on
+  every serialized body and an empty `304` when a `GET`/`HEAD` `200` is
+  unchanged, so polling an unchanged JSON list costs almost nothing. JSON
+  with no `cache-control` of its own gets `no-cache` (revalidate every
+  time). It covers every route createApp registers and everything
+  registered after it. A route writing to `reply.raw` (SSE) is untouched,
+  and request bodies are not decompressed. Don't register
+  `@fastify/compress` or `@fastify/etag` yourself on top of it.
 - **Body size**: Fastify's default 1MiB body limit applies unless you pass
   `bodyLimit` (bytes), e.g. for a route that receives base64 images.
 
